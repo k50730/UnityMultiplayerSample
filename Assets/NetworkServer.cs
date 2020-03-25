@@ -11,7 +11,7 @@ public class NetworkServer : MonoBehaviour
     public NetworkDriver m_Driver;
     public ushort serverPort;
     private NativeList<NetworkConnection> m_Connections;
-
+    float timer;
     void Start ()
     {
         m_Driver = NetworkDriver.Create();
@@ -23,6 +23,8 @@ public class NetworkServer : MonoBehaviour
             m_Driver.Listen();
 
         m_Connections = new NativeList<NetworkConnection>(16, Allocator.Persistent);
+
+        timer = 0.5f;
     }
 
     void SendToClient(string message, NetworkConnection c){
@@ -44,6 +46,13 @@ public class NetworkServer : MonoBehaviour
         // Example to send a handshake message:
         HandshakeMsg m = new HandshakeMsg();
         m.player.id = c.InternalId.ToString();
+        Debug.Log(m.player.id);
+        SendToClient(JsonUtility.ToJson(m), c);
+    }
+
+    void SendPostion(NetworkConnection c)
+    {
+        PlayerUpdateMsg m = new PlayerUpdateMsg();
         SendToClient(JsonUtility.ToJson(m), c);
     }
 
@@ -79,6 +88,7 @@ public class NetworkServer : MonoBehaviour
 
     void Update ()
     {
+        timer -= Time.deltaTime;
         m_Driver.ScheduleUpdate().Complete();
 
         // CleanUpConnections
@@ -108,6 +118,8 @@ public class NetworkServer : MonoBehaviour
         for (int i = 0; i < m_Connections.Length; i++)
         {
             Assert.IsTrue(m_Connections[i].IsCreated);
+            if(timer < 0)
+                SendPostion(m_Connections[i]);
             
             NetworkEvent.Type cmd;
             cmd = m_Driver.PopEventForConnection(m_Connections[i], out stream);
@@ -121,9 +133,15 @@ public class NetworkServer : MonoBehaviour
                 {
                     OnDisconnect(i);
                 }
-
+                // disconnect?
                 cmd = m_Driver.PopEventForConnection(m_Connections[i], out stream);
             }
         }
+        if (timer < 0)
+        {
+            timer = 0.5f;
+        }
+
+        
     }
 }

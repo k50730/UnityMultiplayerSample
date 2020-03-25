@@ -13,8 +13,9 @@ public class NetworkClient : MonoBehaviour
     public GameObject cube;
     public string serverIP;
     public ushort serverPort;
+    int spawnCounter;
 
-    NetworkObjects.NetworkPlayer player;
+    NetworkObjects.NetworkPlayer myPlayer;
 
     
     void Start ()
@@ -23,7 +24,8 @@ public class NetworkClient : MonoBehaviour
         m_Connection = default(NetworkConnection);
         var endpoint = NetworkEndPoint.Parse(serverIP,serverPort);
         m_Connection = m_Driver.Connect(endpoint);
-        player = new NetworkObjects.NetworkPlayer();
+        myPlayer = new NetworkObjects.NetworkPlayer();
+        spawnCounter = 0;
     }
     
     void SendToServer(string message){
@@ -37,10 +39,19 @@ public class NetworkClient : MonoBehaviour
         Debug.Log("We are now connected to the server");
 
         // Example to send a handshake message:
-        //HandshakeMsg m = new HandshakeMsg();
-        //m.player.id = m_Connection.InternalId.ToString();
-        //SendToServer(JsonUtility.ToJson(m));
+        HandshakeMsg m = new HandshakeMsg();
+        m.player.id = m_Connection.InternalId.ToString();
+        Debug.Log(m.player.id + " is connected");
+        SendToServer(JsonUtility.ToJson(m));
         //SpawnPlayers(m.player.id);
+    }
+
+    void SendingPosition()
+    {
+        PlayerUpdateMsg m = new PlayerUpdateMsg();
+        m.player.cubePos = myPlayer.cubePos;
+        m.player.cubeRot = myPlayer.cubeRot;
+        SendToServer(JsonUtility.ToJson(m));
     }
 
     void OnData(DataStreamReader stream){
@@ -77,6 +88,7 @@ public class NetworkClient : MonoBehaviour
     void OnDisconnect(){
         Debug.Log("Client got disconnected from server");
         m_Connection = default(NetworkConnection);
+
     }
 
     public void OnDestroy()
@@ -87,19 +99,19 @@ public class NetworkClient : MonoBehaviour
     {
         if (Input.GetKey(KeyCode.W))
         {
-            player.cubePos += transform.TransformVector(Vector3.forward) * Time.deltaTime;
+            myPlayer.cubePos += transform.TransformVector(Vector3.forward) * Time.deltaTime;
         }
         if (Input.GetKey(KeyCode.S))
         {
-            player.cubePos -= transform.TransformVector(Vector3.forward) * Time.deltaTime;
+            myPlayer.cubePos -= transform.TransformVector(Vector3.forward) * Time.deltaTime;
         }
         if (Input.GetKey(KeyCode.A))
         {
-            player.cubeRot += new Vector3(0, 1, 0) * Time.deltaTime * 90f;
+            myPlayer.cubeRot += new Vector3(0, 1, 0) * Time.deltaTime * 90f;
         }
         if (Input.GetKey(KeyCode.D))
         {
-            player.cubeRot -= new Vector3(0, 1, 0) * Time.deltaTime * 90f;
+            myPlayer.cubeRot -= new Vector3(0, 1, 0) * Time.deltaTime * 90f;
         }
 
         m_Driver.ScheduleUpdate().Complete();
@@ -129,11 +141,13 @@ public class NetworkClient : MonoBehaviour
 
             cmd = m_Connection.PopEvent(m_Driver, out stream);
         }
+
+        SendingPosition();
     }
 
     void SpawnPlayers(string id) 
     {
-        GameObject temp = Instantiate(cube, new Vector3(-5, 0, 0), transform.rotation);
-        
+        GameObject temp = Instantiate(cube, new Vector3(-5 + spawnCounter, 0, 0), cube.transform.rotation);
+        spawnCounter++;
     }
 }
