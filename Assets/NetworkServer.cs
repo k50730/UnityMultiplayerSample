@@ -3,6 +3,7 @@ using UnityEngine.Assertions;
 using Unity.Collections;
 using Unity.Networking.Transport;
 using NetworkMessages;
+using NetworkObjects;
 using System;
 using System.Text;
 
@@ -43,11 +44,24 @@ public class NetworkServer : MonoBehaviour
         m_Connections.Add(c);
         Debug.Log("Accepted a connection");
 
-        // Example to send a handshake message:
-        HandshakeMsg m = new HandshakeMsg();
-        m.player.id = c.InternalId.ToString();
-        Debug.Log(m.player.id);
-        SendToClient(JsonUtility.ToJson(m), c);
+        // Example to send a Connect message to the client
+        for (int i = 0; i < m_Connections.Length; i++)
+        {
+            PlayerConnectMsg m = new PlayerConnectMsg();
+            //m.newPlayer.id = c.InternalId.ToString();
+            //Debug.Log(m.newPlayer.id);
+            SendToClient(JsonUtility.ToJson(m), m_Connections[i]);
+        }
+
+        // Send Own id
+        OwnIDMsg idMsg = new OwnIDMsg();
+        idMsg.ownedPlayer.id = c.InternalId.ToString();
+        SendToClient(JsonUtility.ToJson(idMsg), c);
+
+        // Send the client list to newly connect player
+        ServerUpdateMsg suMsg = new ServerUpdateMsg();
+        SendToClient(JsonUtility.ToJson(suMsg), c);
+
     }
 
     void SendPostion(NetworkConnection c)
@@ -63,20 +77,24 @@ public class NetworkServer : MonoBehaviour
         NetworkHeader header = JsonUtility.FromJson<NetworkHeader>(recMsg);
 
         switch(header.cmd){
+            case Commands.PLAYER_CONNECT:
+                PlayerConnectMsg pcMsg = JsonUtility.FromJson<PlayerConnectMsg>(recMsg);
+                Debug.Log("A player just connected");
+                break;
             case Commands.HANDSHAKE:
-            HandshakeMsg hsMsg = JsonUtility.FromJson<HandshakeMsg>(recMsg);
-            Debug.Log("Handshake message received!");
-            break;
+                HandshakeMsg hsMsg = JsonUtility.FromJson<HandshakeMsg>(recMsg);
+                Debug.Log("Handshake message received!");
+                break;
             case Commands.PLAYER_UPDATE:
-            PlayerUpdateMsg puMsg = JsonUtility.FromJson<PlayerUpdateMsg>(recMsg);
-            Debug.Log("Player update message received!");
-            break;
+                PlayerUpdateMsg puMsg = JsonUtility.FromJson<PlayerUpdateMsg>(recMsg);
+                Debug.Log("Player update message received!");
+                break;
             case Commands.SERVER_UPDATE:
-            ServerUpdateMsg suMsg = JsonUtility.FromJson<ServerUpdateMsg>(recMsg);
-            Debug.Log("Server update message received!");
-            break;
+                ServerUpdateMsg suMsg = JsonUtility.FromJson<ServerUpdateMsg>(recMsg);
+                Debug.Log("Server update message received!");
+                break;
             default:
-            Debug.Log("SERVER ERROR: Unrecognized message received!");
+                Debug.Log("SERVER ERROR: Unrecognized message received!");
             break;
         }
     }

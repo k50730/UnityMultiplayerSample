@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using Unity.Collections;
+using System.Collections.Generic;
 using Unity.Networking.Transport;
 using NetworkMessages;
 using NetworkObjects;
@@ -14,7 +15,9 @@ public class NetworkClient : MonoBehaviour
     public string serverIP;
     public ushort serverPort;
     int spawnCounter;
-
+    string playerID;
+    Dictionary<string, GameObject> ClientsList;
+    
     NetworkObjects.NetworkPlayer myPlayer;
 
     
@@ -26,6 +29,7 @@ public class NetworkClient : MonoBehaviour
         m_Connection = m_Driver.Connect(endpoint);
         myPlayer = new NetworkObjects.NetworkPlayer();
         spawnCounter = 0;
+        ClientsList = new Dictionary<string, GameObject>();
     }
     
     void SendToServer(string message){
@@ -39,18 +43,19 @@ public class NetworkClient : MonoBehaviour
         Debug.Log("We are now connected to the server");
 
         // Example to send a handshake message:
-        HandshakeMsg m = new HandshakeMsg();
-        m.player.id = m_Connection.InternalId.ToString();
-        Debug.Log(m.player.id + " is connected");
-        SendToServer(JsonUtility.ToJson(m));
+        //HandshakeMsg m = new HandshakeMsg();
+        //m.player.id = m_Connection.InternalId.ToString();
+        //playerID = m_Connection.InternalId.ToString();
+        //Debug.Log(m.player.id + " is connected");
+        //SendToServer(JsonUtility.ToJson(m));
         //SpawnPlayers(m.player.id);
     }
 
-    void SendingPosition()
+    public void SendingPosition(Vector3 pos, Vector3 rot)
     {
         PlayerUpdateMsg m = new PlayerUpdateMsg();
-        m.player.cubePos = myPlayer.cubePos;
-        m.player.cubeRot = myPlayer.cubeRot;
+        m.player.cubePos = pos;
+        m.player.cubeRot = rot;
         SendToServer(JsonUtility.ToJson(m));
     }
 
@@ -61,21 +66,29 @@ public class NetworkClient : MonoBehaviour
         NetworkHeader header = JsonUtility.FromJson<NetworkHeader>(recMsg);
 
         switch(header.cmd){
+            case Commands.PLAYER_CONNECT:
+                PlayerConnectMsg pcMsg = JsonUtility.FromJson<PlayerConnectMsg>(recMsg);
+                SpawnPlayers(playerID);
+                break;
             case Commands.HANDSHAKE:
-            HandshakeMsg hsMsg = JsonUtility.FromJson<HandshakeMsg>(recMsg);
-            SpawnPlayers(m_Connection.InternalId.ToString());
-            Debug.Log("Handshake message received!");
-            break;
+                HandshakeMsg hsMsg = JsonUtility.FromJson<HandshakeMsg>(recMsg);
+                Debug.Log("Handshake message received!");
+                break;
             case Commands.PLAYER_UPDATE:
-            PlayerUpdateMsg puMsg = JsonUtility.FromJson<PlayerUpdateMsg>(recMsg);
-            Debug.Log("Player update message received!");
-            break;
+                PlayerUpdateMsg puMsg = JsonUtility.FromJson<PlayerUpdateMsg>(recMsg);
+                Debug.Log("Player update message received!");
+                break;
             case Commands.SERVER_UPDATE:
-            ServerUpdateMsg suMsg = JsonUtility.FromJson<ServerUpdateMsg>(recMsg);
-            Debug.Log("Server update message received!");
-            break;
+                ServerUpdateMsg suMsg = JsonUtility.FromJson<ServerUpdateMsg>(recMsg);
+                Debug.Log("Server update message received!");
+                break;
+            case Commands.OWNED_ID:
+                OwnIDMsg idMsg = JsonUtility.FromJson<OwnIDMsg>(recMsg);
+                idMsg.ownedPlayer.id = playerID;
+                Debug.Log("Own id received! id: " + playerID);
+                break;
             default:
-            Debug.Log("Unrecognized message received!");
+                Debug.Log("Unrecognized message received!");
             break;
         }
     }
@@ -97,22 +110,22 @@ public class NetworkClient : MonoBehaviour
     }   
     void Update()
     {
-        if (Input.GetKey(KeyCode.W))
-        {
-            myPlayer.cubePos += transform.TransformVector(Vector3.forward) * Time.deltaTime;
-        }
-        if (Input.GetKey(KeyCode.S))
-        {
-            myPlayer.cubePos -= transform.TransformVector(Vector3.forward) * Time.deltaTime;
-        }
-        if (Input.GetKey(KeyCode.A))
-        {
-            myPlayer.cubeRot += new Vector3(0, 1, 0) * Time.deltaTime * 90f;
-        }
-        if (Input.GetKey(KeyCode.D))
-        {
-            myPlayer.cubeRot -= new Vector3(0, 1, 0) * Time.deltaTime * 90f;
-        }
+        //if (Input.GetKey(KeyCode.W))
+        //{
+        //    myPlayer.cubePos += transform.TransformVector(Vector3.forward) * Time.deltaTime;
+        //}
+        //if (Input.GetKey(KeyCode.S))
+        //{
+        //    myPlayer.cubePos -= transform.TransformVector(Vector3.forward) * Time.deltaTime;
+        //}
+        //if (Input.GetKey(KeyCode.A))
+        //{
+        //    myPlayer.cubeRot += new Vector3(0, 1, 0) * Time.deltaTime * 90f;
+        //}
+        //if (Input.GetKey(KeyCode.D))
+        //{
+        //    myPlayer.cubeRot -= new Vector3(0, 1, 0) * Time.deltaTime * 90f;
+        //}
 
         m_Driver.ScheduleUpdate().Complete();
 
@@ -142,12 +155,22 @@ public class NetworkClient : MonoBehaviour
             cmd = m_Connection.PopEvent(m_Driver, out stream);
         }
 
-        SendingPosition();
     }
 
     void SpawnPlayers(string id) 
     {
+        
         GameObject temp = Instantiate(cube, new Vector3(-5 + spawnCounter, 0, 0), cube.transform.rotation);
+        if(id == playerID)
+        {
+            temp.AddComponent<PlayerController>();
+            temp.GetComponent<PlayerController>().client = this;
+        }
         spawnCounter++;
+    }
+
+    void DestroyPlayers(string id)
+    {
+
     }
 }
