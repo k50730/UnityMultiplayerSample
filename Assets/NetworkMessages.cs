@@ -10,7 +10,9 @@ namespace NetworkMessages
         SERVER_UPDATE,
         HANDSHAKE,
         PLAYER_INPUT,
-        OWNED_ID
+        OWNED_ID,
+        PLAYER_DROPPED,
+        PLAYER_LIST
     }
 
     [System.Serializable]
@@ -47,11 +49,14 @@ namespace NetworkMessages
         }
     }
 
-    public class PlayerInputMsg : NetworkHeader {
-        public Input myInput;
-        public PlayerInputMsg() {
-            cmd = Commands.PLAYER_INPUT;
-            myInput = new Input();
+    [System.Serializable]
+    public class PlayerListMsg: NetworkHeader
+    {
+        public List<NetworkObjects.NetworkPlayer> players;
+        public PlayerListMsg()
+        {
+            cmd = Commands.PLAYER_LIST;
+            players = new List<NetworkObjects.NetworkPlayer>();
         }
     }
     [System.Serializable]
@@ -72,8 +77,18 @@ namespace NetworkMessages
             cmd = Commands.OWNED_ID;
             ownedPlayer = new NetworkObjects.NetworkPlayer();
         }
-
     }
+    [System.Serializable]
+    public class PlayerDropMsg : NetworkHeader
+    {
+        public NetworkObjects.NetworkPlayer droppedPlayer;
+        public PlayerDropMsg()
+        {      // Constructor
+            cmd = Commands.PLAYER_DROPPED;
+            droppedPlayer = new NetworkObjects.NetworkPlayer();
+        }
+    }
+
 } 
 
 namespace NetworkObjects

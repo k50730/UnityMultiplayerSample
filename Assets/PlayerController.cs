@@ -20,19 +20,19 @@ public class PlayerController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetKey(KeyCode.UpArrow))
+        if (Input.GetKey(KeyCode.W))
         {
             positionVector3 += transform.TransformVector(Vector3.forward) * Time.deltaTime;
         }
-        if (Input.GetKey(KeyCode.DownArrow))
+        if (Input.GetKey(KeyCode.S))
         {
             positionVector3 -= transform.TransformVector(Vector3.forward) * Time.deltaTime;
         }
-        if (Input.GetKey(KeyCode.LeftArrow))
+        if (Input.GetKey(KeyCode.A))
         {
             rotationVector3 += new Vector3(0, 1, 0) * Time.deltaTime * 90f;
         }
-        if (Input.GetKey(KeyCode.RightArrow))
+        if (Input.GetKey(KeyCode.D))
         {
             rotationVector3 -= new Vector3(0, 1, 0) * Time.deltaTime * 90f;
         }

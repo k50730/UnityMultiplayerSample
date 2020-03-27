@@ -340,5 +340,5 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cube: {fileID: 4469029571703873532, guid: 0329e9ad725c3c3409f8cd14a18453ed, type: 3}
-  serverIP: 3.86.206.4
+  serverIP: 127.0.0.1
   serverPort: 12345
