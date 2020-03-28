@@ -82,6 +82,13 @@ namespace NetworkMessages
     public class PlayerDropMsg : NetworkHeader
     {
         public NetworkObjects.NetworkPlayer droppedPlayer;
+        public List<NetworkObjects.NetworkPlayer> droppedPlayers;
+        public PlayerDropMsg(List<NetworkObjects.NetworkPlayer> playerList)
+        {      // Constructor
+            cmd = Commands.PLAYER_DROPPED;
+            droppedPlayers = playerList;
+        }
+
         public PlayerDropMsg()
         {      // Constructor
             cmd = Commands.PLAYER_DROPPED;
@@ -102,6 +109,8 @@ namespace NetworkObjects
         public Color cubeColor;
         public Vector3 cubePos;
         public Vector3 cubeRot;
+        public float lastBeat;
+        public float dropTimer;
 
         public NetworkPlayer(){
             cubeColor = new Color();

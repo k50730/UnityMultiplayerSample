@@ -30,6 +30,8 @@ public class NetworkClient : MonoBehaviour
         myPlayer = new NetworkObjects.NetworkPlayer();
         spawnCounter = 0;
         ClientsList = new Dictionary<string, GameObject>();
+        InvokeRepeating("HeartBeat", 1, 0.033f);
+
     }
     
     void SendToServer(string message){
@@ -37,6 +39,13 @@ public class NetworkClient : MonoBehaviour
         NativeArray<byte> bytes = new NativeArray<byte>(Encoding.ASCII.GetBytes(message),Allocator.Temp);
         writer.WriteBytes(bytes);
         m_Driver.EndSend(writer);
+    }
+
+    void HeartBeat()
+    {
+        HandshakeMsg m = new HandshakeMsg();
+        m.player.id = playerID;
+        SendToServer(JsonUtility.ToJson(m));
     }
 
     void OnConnect(){
@@ -63,7 +72,7 @@ public class NetworkClient : MonoBehaviour
             case Commands.PLAYER_CONNECT:
                 PlayerConnectMsg pcMsg = JsonUtility.FromJson<PlayerConnectMsg>(recMsg);
                 SpawnPlayers(pcMsg.newPlayer.id, pcMsg.newPlayer.cubeColor);
-                Debug.Log("A player has connected with id:" + pcMsg.newPlayer.id);
+                //Debug.Log("A player has connected with id:" + pcMsg.newPlayer.id);
                 break;
             case Commands.HANDSHAKE:
                 HandshakeMsg hsMsg = JsonUtility.FromJson<HandshakeMsg>(recMsg);
@@ -72,7 +81,7 @@ public class NetworkClient : MonoBehaviour
             case Commands.PLAYER_UPDATE:
                 PlayerUpdateMsg puMsg = JsonUtility.FromJson<PlayerUpdateMsg>(recMsg);
                 UpdatePlayers(puMsg.player.id, puMsg.player.cubePos, puMsg.player.cubeRot);
-                Debug.Log("Player update message received!");
+                //Debug.Log("Player update message received!");
                 break;
             case Commands.SERVER_UPDATE:
                 ServerUpdateMsg suMsg = JsonUtility.FromJson<ServerUpdateMsg>(recMsg);
@@ -85,14 +94,14 @@ public class NetworkClient : MonoBehaviour
                 break;
             case Commands.PLAYER_DROPPED:
                 PlayerDropMsg dropMsg = JsonUtility.FromJson<PlayerDropMsg>(recMsg);
-                DestroyPlayers(dropMsg.droppedPlayer.id);
+                
                 break;
             case Commands.PLAYER_LIST:
                 PlayerListMsg plMsg = JsonUtility.FromJson<PlayerListMsg>(recMsg);
                 foreach (var it in plMsg.players)
                 {
                     SpawnPlayers(it.id, it.cubeColor);
-                    Debug.Log(it.id);
+                    Debug.Log("Spawn player with id: " + it.id);
                 }
                 break;
             default:
@@ -118,7 +127,6 @@ public class NetworkClient : MonoBehaviour
     }   
     void Update()
     {
-
         m_Driver.ScheduleUpdate().Complete();
 
         if (!m_Connection.IsCreated)
@@ -153,12 +161,12 @@ public class NetworkClient : MonoBehaviour
     {
         if (ClientsList.ContainsKey(id))
             return;
-        Debug.Log("Spawned player id: " + id);
-        GameObject temp = Instantiate(cube, new Vector3(-5 + spawnCounter, 0, 0), cube.transform.rotation);
+        //Debug.Log("Spawned player id: " + id);
+        GameObject temp = Instantiate(cube, new Vector3(0, 0, 0), cube.transform.rotation);
         temp.GetComponent<Renderer>().material.SetColor("_Color", color);
         if(id == playerID)
         {
-            Debug.Log("Controller Added!");
+            //Debug.Log("Controller Added!");
             temp.AddComponent<PlayerController>();
             temp.GetComponent<PlayerController>().client = this;
         }

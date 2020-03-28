@@ -14,8 +14,7 @@ public class NetworkServer : MonoBehaviour
     public NetworkDriver m_Driver;
     public ushort serverPort;
     private NativeList<NetworkConnection> m_Connections;
-    //public List<GameObject> clients;
-    // Send the client list to newly connect player
+    List<NetworkObjects.NetworkPlayer> checkDroppedPlayer;
     PlayerListMsg plMsg;
     float timer;
     void Start ()
@@ -32,8 +31,8 @@ public class NetworkServer : MonoBehaviour
 
         timer = 0.5f;
 
-        //clients = new List<GameObject>();
         plMsg = new PlayerListMsg();
+        checkDroppedPlayer = new List<NetworkObjects.NetworkPlayer>();
     }
 
     void SendToClient(string message, NetworkConnection c){
@@ -55,11 +54,12 @@ public class NetworkServer : MonoBehaviour
         // Send Own id
         OwnIDMsg idMsg = new OwnIDMsg();
         idMsg.ownedPlayer.id = c.InternalId.ToString();
+        idMsg.ownedPlayer.cubeColor = new Color(Random.Range(0, 1.0f), Random.Range(0, 1.0f), Random.Range(0, 1.0f));
         Debug.Log("Sending player id: " + idMsg.ownedPlayer.id);
         SendToClient(JsonUtility.ToJson(idMsg), c);
 
         NetworkObjects.NetworkPlayer newPlayer = new NetworkObjects.NetworkPlayer();
-        newPlayer.id = idMsg.ownedPlayer.id;
+        newPlayer.id = c.InternalId.ToString();
         newPlayer.cubeColor = idMsg.ownedPlayer.cubeColor;
         plMsg.players.Add(newPlayer);
 
@@ -69,8 +69,7 @@ public class NetworkServer : MonoBehaviour
             PlayerConnectMsg m = new PlayerConnectMsg();
             Debug.Log("Send Player Connect");
             m.newPlayer.id = c.InternalId.ToString();
-            m.newPlayer.cubeColor = new Color(Random.Range(0, 1.0f), Random.Range(0, 1.0f), Random.Range(0, 1.0f));
-            
+            m.newPlayer.cubeColor = idMsg.ownedPlayer.cubeColor;
             SendToClient(JsonUtility.ToJson(m), m_Connections[i]);
         }
 
@@ -101,6 +100,14 @@ public class NetworkServer : MonoBehaviour
                 break;
             case Commands.HANDSHAKE:
                 HandshakeMsg hsMsg = JsonUtility.FromJson<HandshakeMsg>(recMsg);
+                hsMsg.player.lastBeat = Time.deltaTime;
+                for (int j = 0; j < checkDroppedPlayer.Count; j++)
+                {
+                    if (checkDroppedPlayer[j].id == hsMsg.player.id)
+                        checkDroppedPlayer[j] = hsMsg.player;
+                    else
+                        checkDroppedPlayer.Add(hsMsg.player);
+                }
                 Debug.Log("Handshake message received!");
                 break;
             case Commands.PLAYER_UPDATE:
@@ -118,8 +125,8 @@ public class NetworkServer : MonoBehaviour
         }
     }
 
-    void OnDisconnect(int i){
-        Debug.Log("Client disconnected from server");
+    void OnDisconnect(int i)
+    {
 
         PlayerDropMsg pdMsg = new PlayerDropMsg();
         pdMsg.droppedPlayer.id = m_Connections[i].InternalId.ToString();
@@ -137,10 +144,23 @@ public class NetworkServer : MonoBehaviour
         m_Connections[i] = default(NetworkConnection);
     }
 
-    void Update ()
+    void DropClients()
     {
-        timer -= Time.deltaTime;
-        m_Driver.ScheduleUpdate().Complete();
+        List<NetworkObjects.NetworkPlayer> droppedList = new List<NetworkObjects.NetworkPlayer>();
+        for(int i = 0; i < plMsg.players.Count; i++)
+        {
+            plMsg.players[i].dropTimer += Time.deltaTime;
+            if(plMsg.players[i].dropTimer >= 5.0f)
+            {
+                int index = MatchConnectionWithId(plMsg.players[i].id);
+                if (index >= 0)
+                    m_Connections[index] = default(NetworkConnection);
+
+                droppedList.Add(plMsg.players[i]);
+                plMsg.players.RemoveAt(i);
+                i--;
+            }
+        }
 
         // CleanUpConnections
         for (int i = 0; i < m_Connections.Length; i++)
@@ -153,6 +173,38 @@ public class NetworkServer : MonoBehaviour
             }
         }
 
+        if(droppedList.Count > 0)
+        {
+            Debug.Log("Player Dropped");
+            PlayerDropMsg drop = new PlayerDropMsg(droppedList);
+            for (int i = 0; i < m_Connections.Length; i++)
+            {
+                SendToClient(JsonUtility.ToJson(drop), m_Connections[i]);
+            }
+        }
+    }
+
+
+    void CheckHeartBeat()
+    {
+        foreach
+    }
+
+    int MatchConnectionWithId(string id)
+    {
+        for(int i = 0; i < m_Connections.Length; i++)
+        {
+            if (m_Connections[i].InternalId.ToString() == id)
+                return i;
+        }
+        return -1;
+
+    }
+
+    void Update ()
+    {
+        m_Driver.ScheduleUpdate().Complete();
+
         // AcceptNewConnections
         NetworkConnection c = m_Driver.Accept();
         while (c  != default(NetworkConnection))
@@ -163,6 +215,7 @@ public class NetworkServer : MonoBehaviour
             c = m_Driver.Accept();
         }
 
+        //DropClients();
 
         // Read Incoming Messages
         DataStreamReader stream;
@@ -178,19 +231,13 @@ public class NetworkServer : MonoBehaviour
                 {
                     OnData(stream, i);
                 }
-                else if (cmd == NetworkEvent.Type.Disconnect)
-                {
-                    OnDisconnect(i);
-                }
+                //else if (cmd == NetworkEvent.Type.Disconnect)
+                //{
+                //    OnDisconnect(i);
+                //}
                 // disconnect?
                 cmd = m_Driver.PopEventForConnection(m_Connections[i], out stream);
             }
         }
-        if (timer < 0)
-        {
-            timer = 0.5f;
-        }
-
-        
     }
 }
