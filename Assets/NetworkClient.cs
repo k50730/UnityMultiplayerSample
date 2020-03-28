@@ -94,7 +94,7 @@ public class NetworkClient : MonoBehaviour
                 break;
             case Commands.PLAYER_DROPPED:
                 PlayerDropMsg dropMsg = JsonUtility.FromJson<PlayerDropMsg>(recMsg);
-                
+                DestroyPlayers(dropMsg.droppedPlayer.id);
                 break;
             case Commands.PLAYER_LIST:
                 PlayerListMsg plMsg = JsonUtility.FromJson<PlayerListMsg>(recMsg);

@@ -17,6 +17,7 @@ public class NetworkServer : MonoBehaviour
     List<NetworkObjects.NetworkPlayer> checkDroppedPlayer;
     PlayerListMsg plMsg;
     float timer;
+    bool flag;
     void Start ()
     {
         m_Driver = NetworkDriver.Create();
@@ -100,7 +101,7 @@ public class NetworkServer : MonoBehaviour
                 break;
             case Commands.HANDSHAKE:
                 HandshakeMsg hsMsg = JsonUtility.FromJson<HandshakeMsg>(recMsg);
-                hsMsg.player.lastBeat = Time.deltaTime;
+                hsMsg.player.lastBeat = Time.time;
                 for (int j = 0; j < checkDroppedPlayer.Count; j++)
                 {
                     if (checkDroppedPlayer[j].id == hsMsg.player.id)
@@ -108,7 +109,7 @@ public class NetworkServer : MonoBehaviour
                     else
                         checkDroppedPlayer.Add(hsMsg.player);
                 }
-                Debug.Log("Handshake message received!");
+                //Debug.Log("Handshake message received from id: " + hsMsg.player.id);
                 break;
             case Commands.PLAYER_UPDATE:
                 PlayerUpdateMsg puMsg = JsonUtility.FromJson<PlayerUpdateMsg>(recMsg);
@@ -187,7 +188,41 @@ public class NetworkServer : MonoBehaviour
 
     void CheckHeartBeat()
     {
-        foreach
+        foreach(var it in checkDroppedPlayer)
+        {
+            flag = false;
+            if(Time.time - it.lastBeat >= 5.0f)
+            {
+                Debug.Log("Player " + it.id + " has dropped");
+                flag = true;
+                PlayerDropMsg pdMsg = new PlayerDropMsg();
+                int index = MatchConnectionWithId(it.id);
+                pdMsg.droppedPlayer.id = m_Connections[index].InternalId.ToString();
+                for (int j = 0; j < m_Connections.Length; j++)
+                {
+                    if (j != index)
+                    {
+                        SendToClient(JsonUtility.ToJson(pdMsg), m_Connections[index]);
+                    }
+                }
+                foreach (var player in plMsg.players)
+                    if (player.id == pdMsg.droppedPlayer.id)
+                        plMsg.players.Remove(player);
+
+                m_Connections[index] = default(NetworkConnection);
+            }
+        }
+
+
+        for (int i = 0; i < m_Connections.Length; i++)
+        {
+            if (!m_Connections[i].IsCreated)
+            {
+
+                m_Connections.RemoveAtSwapBack(i);
+                --i;
+            }
+        }
     }
 
     int MatchConnectionWithId(string id)
@@ -215,7 +250,7 @@ public class NetworkServer : MonoBehaviour
             c = m_Driver.Accept();
         }
 
-        //DropClients();
+        CheckHeartBeat();
 
         // Read Incoming Messages
         DataStreamReader stream;
