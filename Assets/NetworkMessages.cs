@@ -4,11 +4,10 @@ using UnityEngine;
 
 namespace NetworkMessages
 {
-    public enum Commands {
+    public enum Commands
+    {
         PLAYER_CONNECT,
         PLAYER_UPDATE,
-        SERVER_UPDATE,
-        HANDSHAKE,
         PLAYER_INPUT,
         OWNED_ID,
         PLAYER_DROPPED,
@@ -16,27 +15,33 @@ namespace NetworkMessages
     }
 
     [System.Serializable]
-    public class NetworkHeader {
+    public class NetworkHeader
+    {
         public Commands cmd;
     }
 
     [System.Serializable]
-    public class HandshakeMsg : NetworkHeader {
-        public NetworkObjects.NetworkPlayer player;
-        public HandshakeMsg() {      // Constructor
-            cmd = Commands.HANDSHAKE;
-            player = new NetworkObjects.NetworkPlayer();
-        }
-    }
-
-    [System.Serializable]
-    public class PlayerUpdateMsg : NetworkHeader {
-        public NetworkObjects.NetworkPlayer player;
-        public PlayerUpdateMsg() {      // Constructor
+    public class PlayerUpdateMsg : NetworkHeader
+    {
+        public List<NetworkObjects.NetworkPlayer> players;
+        public PlayerUpdateMsg()
+        {
             cmd = Commands.PLAYER_UPDATE;
-            player = new NetworkObjects.NetworkPlayer();
+            players = new List<NetworkObjects.NetworkPlayer>();
         }
     };
+
+    [System.Serializable]
+    public class PlayerInputMsg : NetworkHeader
+    {
+        public Vector3 position;
+        public Vector3 rotation;
+
+        public PlayerInputMsg()
+        {
+            cmd = Commands.PLAYER_INPUT;
+        }
+    }
 
     [System.Serializable]
     public class PlayerConnectMsg : NetworkHeader
@@ -50,7 +55,7 @@ namespace NetworkMessages
     }
 
     [System.Serializable]
-    public class PlayerListMsg: NetworkHeader
+    public class PlayerListMsg : NetworkHeader
     {
         public List<NetworkObjects.NetworkPlayer> players;
         public PlayerListMsg()
@@ -59,17 +64,10 @@ namespace NetworkMessages
             players = new List<NetworkObjects.NetworkPlayer>();
         }
     }
-    [System.Serializable]
-    public class ServerUpdateMsg : NetworkHeader {
-        public List<NetworkObjects.NetworkPlayer> players;
-        public ServerUpdateMsg() {      // Constructor
-            cmd = Commands.SERVER_UPDATE;
-            players = new List<NetworkObjects.NetworkPlayer>();
-        }
-    }
 
     [System.Serializable]
-    public class OwnIDMsg : NetworkHeader {
+    public class OwnIDMsg : NetworkHeader
+    {
         public NetworkObjects.NetworkPlayer ownedPlayer;
 
         public OwnIDMsg()
@@ -81,38 +79,37 @@ namespace NetworkMessages
     [System.Serializable]
     public class PlayerDropMsg : NetworkHeader
     {
-        public NetworkObjects.NetworkPlayer droppedPlayer;
         public List<NetworkObjects.NetworkPlayer> droppedPlayers;
+        public PlayerDropMsg()
+        {
+            cmd = Commands.PLAYER_DROPPED;
+            droppedPlayers = new List<NetworkObjects.NetworkPlayer>();
+        }
         public PlayerDropMsg(List<NetworkObjects.NetworkPlayer> playerList)
         {      // Constructor
             cmd = Commands.PLAYER_DROPPED;
             droppedPlayers = playerList;
         }
-
-        public PlayerDropMsg()
-        {      // Constructor
-            cmd = Commands.PLAYER_DROPPED;
-            droppedPlayer = new NetworkObjects.NetworkPlayer();
-        }
     }
 
-} 
+}
 
 namespace NetworkObjects
 {
     [System.Serializable]
-    public class NetworkObject{
+    public class NetworkObject
+    {
         public string id;
     }
     [System.Serializable]
-    public class NetworkPlayer : NetworkObject{
+    public class NetworkPlayer : NetworkObject
+    {
         public Color cubeColor;
         public Vector3 cubePos;
         public Vector3 cubeRot;
-        public float lastBeat;
-        public float dropTimer;
 
-        public NetworkPlayer(){
+        public NetworkPlayer()
+        {
             cubeColor = new Color();
         }
     }
